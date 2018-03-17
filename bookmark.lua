@@ -99,7 +99,7 @@ function M.jump()
     if timeout < 10 then
         msg = '0'
     end
-    msg = play_name.."--"..play_percent.."%--continue?"..msg..timeout.."[y/N]"
+    msg = play_name.."--"..(math.modf(play_percent*10)/10).."%--continue?"..msg..timeout.."[y/N]"
     mp.commandv("show-text",  msg, 1000)
 end
 
