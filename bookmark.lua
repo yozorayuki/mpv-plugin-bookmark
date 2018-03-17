@@ -15,7 +15,7 @@ print("CWD:"..cwd_root)
 local play_root
 local play_name
 local play_path
-local play_time
+local play_percent
 
 local mark_name = ".mpv.bookmark"
 local mark_path
@@ -37,10 +37,13 @@ function M.load_mark()
     else
         play_path = play_root.."/"..play_name
     end
-    play_time = file:read('*n')
-    if play_time == nil then
+    play_percent = file:read('*n')
+    if play_percent == nil then
         file:close()
         return false
+    end
+    if(play_percent >= 100) then
+        play_percent = 99
     end
     file:close()
     return true
@@ -48,12 +51,12 @@ end
 
 function M.save_mark()
     local name = mp.get_property("filename")
-    local time = mp.get_property("time-pos", 0)
-    if not(name == nil or time == 0) then
+    local percent = mp.get_property("percent-pos", 0)
+    if not(name == nil or percent == 0) then
         local file = io.open(mark_path, "w")
         file:write(name.."\n")
-        file:write(time)
-        print("save:"..name.." : "..time)
+        file:write(percent)
+        print("save:"..name.." : "..percent)
         file:close()
     end
 end
@@ -96,7 +99,7 @@ function M.jump()
     if timeout < 10 then
         msg = '0'
     end
-    msg = play_name.."--"..M.hms(play_time).."--continue?"..msg..timeout.."[y/N]"
+    msg = play_name.."--"..play_percent.."%--continue?"..msg..timeout.."[y/N]"
     mp.commandv("show-text",  msg, 1000)
 end
 
@@ -123,10 +126,10 @@ function M.resume()
     if c_path ~= play_path then
         mp.commandv('loadfile', play_path)
         mp.add_timeout(0.5, function()
-            mp.set_property("time-pos", play_time)
+            mp.set_property("percent-pos", play_percent)
         end)
     else
-        mp.set_property("time-pos", play_time)
+        mp.set_property("percent-pos", play_percent)
     end
 end
 
@@ -134,7 +137,8 @@ function M.exe()
     local c_file = mp.get_property("filename")
     local c_path = mp.get_property("path")
     if(c_file == nil) then
-        M.show('no file is playing', 5000)
+        M.show('no file is playing', 2000)
+        mp.unregister_event(M.exe)
         return
     end
     play_root = c_path:match("(.+)/")
@@ -142,19 +146,19 @@ function M.exe()
     if(not M.load_mark()) then
         play_name = ""
         play_path = ""
-        play_time = 0
+        play_percent = 0
     end
     if(c_path == play_path) then
         M.resume()
         mp.commandv('show-text', 'play is resumed', 2000)
-        return
+    else
+        M.wait_jump = mp.add_periodic_timer(1, M.jump)
+        M.bind_key()
     end
-    M.wait_jump = mp.add_periodic_timer(1, M.jump)
-    M.bind_key()
+    M.save_period_timer = mp.add_periodic_timer(o.save_period, M.save_mark)
+    mp.add_hook("on_unload", 50, M.save_mark)
+    mp.observe_property("pause", "bool", M.pause)
+    mp.unregister_event(M.exe)
 end
 
-mp.add_timeout(0.5, M.exe)
-
-M.save_period_timer = mp.add_periodic_timer(o.save_period, M.save_mark)
-mp.add_hook("on_unload", 50, M.save_mark)
-mp.observe_property("pause", "bool", M.pause)
+mp.register_event("file-loaded", M.exe)
