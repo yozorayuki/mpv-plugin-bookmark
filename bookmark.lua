@@ -67,6 +67,35 @@ function M.compare(s1, s2)
     return 0, len
 end
 
+function M.get_file_num(idx)
+    if idx > #pl_list then
+        return ""
+    end
+    local onm = pl_list[idx]:match("/([^/]+)$")
+    local k = 1
+    if(idx > 1) then
+        local name = pl_list[idx-1]:match("/([^/]+)$")
+        local _, tk = M.compare(onm, name)
+        if k < tk then
+            k = tk
+        end
+    end
+    if(idx < #pl_list) then
+        local name = pl_list[idx+1]:match("/([^/]+)$")
+        local _, tk = M.compare(onm, name)
+        if k < tk then
+            k = tk
+        end
+    end
+    while k > 1 do
+        if onm:match("^[0-9]+", k-1) == nil then
+            break
+        end
+        k = k - 1
+    end
+    return  onm:match("[0-9]+", k) or ""
+end
+
 function M.ld_mark()
     local file = io.open(mk_path, "r")
     if file == nil then
@@ -166,6 +195,7 @@ function M.list_next()
     if c_idx < #pl_list then
         c_idx = c_idx + 1
         mp.commandv("playlist-next", "weak")
+        M.show(M.get_file_num(c_idx), 1000)
         if c_idx < #pl_list then
             ld_idx = c_idx + 1
             mp.commandv("loadfile", pl_list[ld_idx], "append")
@@ -180,6 +210,7 @@ function M.list_prev()
         c_idx = c_idx - 1
         mp.command("playlist-clear")
         mp.commandv("loadfile", pl_list[c_idx])
+        M.show(M.get_file_num(c_idx), 1000)
         ld_idx = c_idx + 1
         mp.commandv("loadfile", pl_list[ld_idx], "append")
     else
@@ -192,11 +223,11 @@ function M.unld_file()
     if(tonumber(percent) < 0.01) then
         return
     elseif(tonumber(percent) > 99) then
-        print("auto next")
         if c_idx < #pl_list then
             c_idx = c_idx + 1
-            ld_idx = c_idx + 1
-            if ld_idx <= #pl_list then
+            M.show(M.get_file_num(c_idx), 1000)
+            if c_idx < #pl_list then
+                ld_idx = c_idx + 1
                 mp.commandv("loadfile", pl_list[ld_idx], "append")
             end
         end
@@ -248,35 +279,15 @@ function M.exe()
         pl_idx = c_idx
     end
     ld_idx = c_idx
+    if c_idx < #pl_list then
+        ld_idx = c_idx + 1
+        mp.commandv("loadfile", pl_list[ld_idx], "append")
+    end
     if(c_idx == pl_idx) then
         mp.set_property("percent-pos", pl_percent)
         M.show("resume ok", 1500)
-        ld_idx = c_idx + 1
-        mp.commandv("loadfile", pl_list[ld_idx], "append")
     else
-        local k = 1
-        if(pl_idx > 1) then
-            local name = pl_list[pl_idx-1]:match("/([^/]+)$")
-            print(name)
-            local _, tk = M.compare(pl_name, name)
-            if k < tk then
-                k = tk
-            end
-        end
-        if(pl_idx < #pl_list) then
-            local name = pl_list[pl_idx+1]:match("/([^/]+)$")
-            local _, tk = M.compare(pl_name, name)
-            if k < tk then
-                k = tk
-            end
-        end
-        while k > 1 do
-            if pl_name:match("^[0-9]+", k-1) == nil then
-                break
-            end
-            k = k - 1
-        end
-        wait_msg = pl_name:match("[0-9]+", k) or ""
+        wait_msg = M.get_file_num(pl_idx)
         M.wait_jump_timer = mp.add_periodic_timer(1, M.wait_jump)
         M.bind_key()
     end
