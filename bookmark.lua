@@ -23,7 +23,7 @@ local pl_idx = 1
 local c_idx = 1
 local ld_idx = 1
 
-local mk_name = ".mpv.bookmark."
+local mk_name = ".mpv.bookmark"
 local mk_path
 
 local wait_msg
