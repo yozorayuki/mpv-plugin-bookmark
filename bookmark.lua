@@ -1,3 +1,6 @@
+--bookmark light version
+--record your playing history for each folder
+--and you can choose resume to play next time
 local mp = require 'mp'
 local utils = require 'mp.utils'
 local options = require 'mp.options'
@@ -5,9 +8,7 @@ local options = require 'mp.options'
 local M = {}
 
 local o = {
-    save_period = 30,
-    playlist_next = "end",
-    playlist_prev = "home"
+    save_period = 30
 }
 options.read_options(o)
 
@@ -21,7 +22,6 @@ local pl_list = {}
 
 local pl_idx = 1
 local c_idx = 1
-local ld_idx = 1
 
 local mk_name = ".mpv.bookmark"
 local mk_path
@@ -30,24 +30,6 @@ local wait_msg
 
 function M.show(msg, mllion)
     mp.commandv("show-text", msg, mllion)
-end
-
-function M.hms(time_s)
-    local ts = math.modf(time_s)
-    local h = math.modf(ts/3600)
-    ts = ts % 3600
-    local m = math.modf(ts/60)
-    s = ts % 60
-    local time = ""..h..':'
-    if m < 10 then
-        time = time.."0"
-    end
-    time = time..m..':'
-    if s < 10 then
-        time = time.."0"
-    end
-    time = time..s
-    return time
 end
 
 function M.compare(s1, s2)
@@ -144,7 +126,7 @@ function M.pause(name, paused)
     end
 end
 
-local timeout = 20
+local timeout = 15 
 function M.wait_jump()
     timeout = timeout - 1
     if(timeout < 1) then
@@ -176,13 +158,8 @@ function M.key_jump()
     M.unbind_key()
     M.wait_jump_timer:kill()
     c_idx = pl_idx
-    l_idx = c_idx
     mp.register_event("file-loaded", M.jump_resume)
     mp.commandv("loadfile", pl_path)
-    if c_idx < #pl_list then
-        ld_idx = c_idx + 1
-        mp.commandv("loadfile", pl_list[ld_idx], "append")
-    end
 end
 
 function M.jump_resume()
@@ -191,58 +168,12 @@ function M.jump_resume()
     M.show("resume ok", 1500)
 end
 
-function M.list_next()
-    if c_idx < #pl_list then
-        c_idx = c_idx + 1
-        mp.commandv("playlist-next", "weak")
-        M.show(M.get_file_num(c_idx), 1000)
-        if c_idx < #pl_list then
-            ld_idx = c_idx + 1
-            mp.commandv("loadfile", pl_list[ld_idx], "append")
-        end
-    else
-        M.show("already the last", 1500)
-    end
-end
-
-function M.list_prev()
-    if c_idx > 1 then
-        c_idx = c_idx - 1
-        mp.command("playlist-clear")
-        mp.commandv("loadfile", pl_list[c_idx])
-        M.show(M.get_file_num(c_idx), 1000)
-        ld_idx = c_idx + 1
-        mp.commandv("loadfile", pl_list[ld_idx], "append")
-    else
-        M.show("already the first", 1000)
-    end
-end
-
-function M.unld_file()
-    local percent = mp.get_property("percent-pos", 0)
-    if(tonumber(percent) < 0.01) then
-        return
-    elseif(tonumber(percent) > 99) then
-        if c_idx < #pl_list then
-            c_idx = c_idx + 1
-            M.show(M.get_file_num(c_idx), 1000)
-            if c_idx < #pl_list then
-                ld_idx = c_idx + 1
-                mp.commandv("loadfile", pl_list[ld_idx], "append")
-            end
-        end
-    else
-        M.save_mark()
-    end
-end
-
 function M.exe()
     mp.unregister_event(M.exe)
     local c_file = mp.get_property("filename")
     local c_path = mp.get_property("path")
     if(c_file == nil) then
         M.show('no file is playing', 1500)
-        mp.unregister_event(M.exe)
         return
     end
     pl_root = c_path:match("(.+)/")
@@ -278,11 +209,6 @@ function M.exe()
         pl_name = c_file
         pl_idx = c_idx
     end
-    ld_idx = c_idx
-    if c_idx < #pl_list then
-        ld_idx = c_idx + 1
-        mp.commandv("loadfile", pl_list[ld_idx], "append")
-    end
     if(c_idx == pl_idx) then
         mp.set_property("percent-pos", pl_percent)
         M.show("resume ok", 1500)
@@ -292,9 +218,7 @@ function M.exe()
         M.bind_key()
     end
     M.save_period_timer = mp.add_periodic_timer(o.save_period, M.save_mark)
-    mp.add_hook("on_unload", 50, M.unld_file)
+    mp.add_hook("on_unload", 50, M.save_mark)
     mp.observe_property("pause", "bool", M.pause)
-    mp.add_key_binding(o.playlist_next, 'list-next', M.list_next)
-    mp.add_key_binding(o.playlist_prev, 'list-prev', M.list_prev)
 end
 mp.register_event("file-loaded", M.exe)
