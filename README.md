@@ -1,14 +1,11 @@
 # mpv-plugin-bookmark
-#### mpv plugin for recording last play in current playing folder and you can resume to play
-this plugin will also load the playlist from the playing folder automatically
+#### mpv plugin to record your playing history for each folder and you can choose resume to play next time.<br>
+this is the light version, if you also want it loading play list automatically, switch to master branch for the advanced version.
 
 ###### Usage
-* Copy `bookmark.lua` script to `~/.config/mpv/scripts/`
-* You can config the shortcut key for `playlist-next` and `playlist-prev` which is `end` and `home` by default<br>
-  value `save_period` mean how many seconds the plugin will save playback progress, quit and puse also trigger saving<br>
-  the config file path is `~/.config/mpv/lua-settings/bookmark.conf` , you may need to create it, for example:
+* copy `bookmark.lua` script to `~/.config/mpv/scripts/`
+* you can config the value of `save_period` which means how many seconds the it will save play progress. quit and puse also trigger saving<br>
+the config file's path is `~/.config/mpv/lua-settings/bookmark.conf` , you may need to create it, for example:
 ```
-playlist_prev=home
-playlist_next=end
 save_period=30
 ```
